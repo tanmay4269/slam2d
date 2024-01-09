@@ -97,7 +97,7 @@ class SLAM(Node):
       if np.abs(self.curr_odom[1]) < self.angular_vel_threshold:
         current_landmarks_ids = self.feature_extraction(self.raw_lidar_data)
 
-      # print(current_landmarks_ids)
+      
 
 
   def odom_callback(self, msg):
@@ -254,7 +254,7 @@ class SLAM(Node):
 
     plt.legend()
     plt.draw()
-    plt.pause(1e-6)
+    plt.pause(config._pause_time)
     plt.clf()
 
 def main():

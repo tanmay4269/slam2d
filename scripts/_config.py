@@ -9,12 +9,12 @@ _odom_cov = np.array([
 ])
 
 _lidar_cov = np.array([
-  [0.0001, 0.0],
-  [0.0, 0.0001]
+  [(1e-3)**2, 0.0],
+  [0.0, (np.radians(0.1))**2]
 ])
 
 """ DBSCAN """
-_dbscan_epsilon = 0.4    # dist bw pts
+_dbscan_epsilon = 0.2    # dist bw pts
 _dbscan_min_samples = 3
 
 """ RANSAC """
@@ -25,19 +25,20 @@ _ransac_consensus = 10     # reject the line if less than X consensus are a part
 _min_line_len = 0.8
 
 """ IEPF """
-_iepf_dist_theshold = 0.01
-_iepf_samples_threshold = 10
+_iepf_dist_theshold = 0.25
+_iepf_length_threshold = 0.1
 
 """ Landmarks """
-_landmark_update_time = 0     # in ms
-_angular_vel_threshold = 0.01  # this is to check if the bot isnt rotating, non rotating lidar is better in quality
+_perp_dist_threshold = 0.5            # perp dist between point and line
+_linear_dist_threshold = 0.05           # along the length of line seg
+_slope_threshold_rad = np.radians(15)  # query get's compared with close enough sloped lines
 
-_perp_dist_threshold = 0.1           # perp dist between point and line
-_linear_dist_threshold = 0.2          # along the length of line seg
-_slope_threshold_rad = np.radians(2)  # query get's compared with close enough sloped lines
+_landmark_update_time = 0     # in ms
+_angular_vel_threshold = 0.1  # this is to check if the bot isnt rotating, non rotating lidar is better in quality
 
 """ Plotting """
-_plot_size = (7, 7)
+_pause_time = 1e-6
+_plot_size = (10, 10)
 _xlim = (-15, 5)
 _ylim = (-7, 15)
 

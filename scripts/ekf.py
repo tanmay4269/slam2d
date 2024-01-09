@@ -22,8 +22,9 @@ def prediction_step(mu, sigma, odom, odom_cov, dt):
   sigma[0:3, 0:3] += odom_cov
 
 
-def correction_step():
-  pass
+def correction_step(current_landmarks_ids, observed_landmarks):
+  for idx in current_landmarks_ids:
+    pass
 
 
 def ekf():

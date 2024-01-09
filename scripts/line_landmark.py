@@ -94,8 +94,12 @@ class LandmarksDB:
 
   def append(self, line):
 
-    angles = np.arctan(self.lines[:, 0, 0])
-    curr_angle = np.arctan(line[0, 0])
+    angles = None
+    curr_angle = None
+    closest_slopes_idx = None
+
+    angles = normalize_angle(np.arctan(self.lines[:, 0, 0]))
+    curr_angle = normalize_angle(np.arctan(line[0, 0]))
 
     closest_slopes_idx = np.where((angles >= curr_angle - self.slope_threshold_rad/2) & (angles <= curr_angle + self.slope_threshold_rad/2))[0]
 
@@ -105,13 +109,15 @@ class LandmarksDB:
     revisited_landmark_idx = -1
 
     for idx in closest_slopes_idx:
-      if self.new_line_to_add(line, self.lines[idx]) == 1:
+      flag = self.new_line_to_add(line, self.lines[idx])
+
+      if flag == 1:
         # this means the landmark was previously visited [for data association]
         revisited_landmark_idx = idx
         break
 
     # zero count means none of the existing landmarks can be associated to the current query landmark
-    if revisited_landmark_idx == -1:
+    if revisited_landmark_idx == -1 and closest_slopes_idx.shape[0] > 0:
       self.lines = np.insert(self.lines, -1, line, axis=0)
 
       revisited_landmark_idx = self.lines.shape[0]
