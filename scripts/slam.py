@@ -16,7 +16,7 @@ from utils import *
 import _config as config 
 from ransac import *
 from iepf import *
-import ekf
+from ekf import ekf
 
 plt.rcParams["figure.figsize"] = config._plot_size
 
@@ -97,7 +97,7 @@ class SLAM(Node):
       if np.abs(self.curr_odom[1]) < self.angular_vel_threshold:
         current_landmarks_ids = self.feature_extraction(self.raw_lidar_data)
 
-      
+        ekf()
 
 
   def odom_callback(self, msg):

@@ -5,12 +5,10 @@ def normalize_angle(angle):
 
   return normalized_angle
 
+def line2polar(line):
+  m, c = line[0]
 
-def deg2rad(deg):
-  return deg * np.pi / 180.0
+  alpha = normalize_angle(np.arctan2(m) + np.pi/2)
+  rho = np.abs(c) * sin(alpha)
 
-def max(a, b):
-  if a > b:
-    return a
-  else:
-    return b
+  return (rho, alpha)
