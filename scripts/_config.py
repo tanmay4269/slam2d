@@ -36,6 +36,8 @@ _slope_threshold_rad = np.radians(15)  # query get's compared with close enough 
 _landmark_update_time = 0     # in ms
 _angular_vel_threshold = 0.1  # this is to check if the bot isnt rotating, non rotating lidar is better in quality
 
+""" Path """
+
 """ Plotting """
 _pause_time = 1e-6
 _plot_size = (10, 10)

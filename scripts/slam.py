@@ -1,6 +1,5 @@
 #! /usr/bin/env python3
 
-
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.cluster import DBSCAN
@@ -14,9 +13,9 @@ from tf_transformations import euler_from_quaternion
 
 from utils import *
 import _config as config 
-from ransac import *
-from iepf import *
-from ekf import ekf
+# from iepf import *
+import iepf
+from ekf import EKF
 
 plt.rcParams["figure.figsize"] = config._plot_size
 
@@ -25,34 +24,28 @@ class SLAM(Node):
     super().__init__("slam_nav")
     
     self.time = self.get_clock().now().nanoseconds
-    self.start_time = self.time
     self.delta_time = 0
 
     self.odom_listener = self.create_subscription(Odometry, 'odom', self.odom_callback, 10)  # queue_size of 10
     self.lidar_listener = self.create_subscription(LaserScan, 'scan', self.lidar_callback, 10)
 
-    ''' Curr bot state '''  # replace contents in this with those in "EKF"
+    """ Curr bot state """  # replace contents in this with those in "EKF"
     self.curr_odom = []
     self.curr_pose = [0.0, 0.0, 0.0]
 
-    ''' EKF '''
-    self.mean_state = np.zeros((3, 1))
-    self.covariance_matrix = np.zeros((3, 3))
+    """ EKF """
+    self.ekf = EKF()
 
-    ''' Landmarks '''
-    self.landmark_update_time = config._landmark_update_time
+    """ Landmarks """
     self.landmarks = LandmarksDB()
     self.raw_lidar_data = []
     self.angular_vel_threshold = config._angular_vel_threshold
 
-    ''' Noise '''
-    # x, y, yaw
-    self.odom_cov = config._odom_cov
-    
-    # range, angle
-    self.lidar_cov = config._lidar_cov
+    """ Noise """
+    self.odom_cov = config._odom_cov    # x, y, yaw
+    self.lidar_cov = config._lidar_cov  # range, angle
 
-    ''' Path '''
+    """ Path """
     self.true_trajectory      = {'x': [0.0], 'y': [0.0], 'yaw': [0.0]}
     self.pure_odom_trajectory = {'x': [0.0], 'y': [0.0], 'yaw': [0.0]}
     self.slam_trajectory      = {'x': [], 'y': [], 'yaw': []}
@@ -76,9 +69,9 @@ class SLAM(Node):
       ]).T
 
       # readings = np.column_stack([
-      #     self.curr_pose[0] + msg.ranges * np.cos(angles),
-      #     self.curr_pose[1] + msg.ranges * np.sin(angles)
-      # ])
+      #     self.curr_pose[0] + ranges * np.cos(angles),
+      #     self.curr_pose[1] + ranges * np.sin(angles)
+      # ]).T
 
       # reverting angles else it'll mess up other systems
       angles = normalize_angle(angles - np.pi + self.true_trajectory["yaw"][-1])
@@ -91,13 +84,8 @@ class SLAM(Node):
 
       current_landmarks_ids = []
 
-      # if int((self.time - self.start_time) * 1e-6) > self.landmark_update_time:
-      #   self.start_time = self.time
-
       if np.abs(self.curr_odom[1]) < self.angular_vel_threshold:
         current_landmarks_ids = self.feature_extraction(self.raw_lidar_data)
-
-        ekf()
 
 
   def odom_callback(self, msg):
@@ -231,7 +219,7 @@ class SLAM(Node):
     return current_landmarks_ids
 
 
-  ''' Rendering stuff '''
+  """ Rendering stuff """
 
   def show_landmarks(self):
     ### Plotting is super expensive
