@@ -7,6 +7,15 @@ class EKF:
     self.mu = np.zeros((3, 1))
     self.sigma = np.zeros((3, 3))
 
+  def run(self):
+    """
+    1. prediction step:
+      - 
+    2. correction step:
+      - provide lines in local frame
+    """
+    pass
+
   def prediction_step(mu, sigma, odom, odom_cov, dt):
 
     theta = mu[2]
@@ -32,6 +41,7 @@ class EKF:
     lines, current_landmarks_ids, observed_landmarks):
 
     """
+    mu: x, y, theta of bot and (rho, alpha) for all landmarks in global frame
     lines: in local frame
     """
 
@@ -39,15 +49,17 @@ class EKF:
     pad = i_max - observed_landmarks.shape[0]
     observed_landmarks = np.array([observed_landmarks, np.zeros(pad)])
 
+    # Z contains (rho, alpha) in local frame
     Z = np.zeros(2 * lines.shape[0])
     expected_Z = np.zeros(2 * lines.shape[0])
     H = []
 
     for idx in current_landmarks_ids:
+      # for new landmarks
       if observed_landmarks[idx] == 0:
         rho, alpha = utils.line2polar(lines[idx])
-        mu[2 * idx + 3] = mu[0] + rho * cos(alpha + mu[2])
-        mu[2 * idx + 4] = mu[1] + rho * sin(alpha + mu[2])
+        mu[2 * idx + 3] = rho + mu[0] * np.cos(alpha) + mu[1] * np.sin(alpha)
+        mu[2 * idx + 4] = normalize_angle(mu[2] + alpha)
 
         observed_landmarks[idx] = 1
       

@@ -12,3 +12,4 @@ def line2polar(line):
   rho = np.abs(c) * sin(alpha)
 
   return (rho, alpha)
+  

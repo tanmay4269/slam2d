@@ -92,7 +92,30 @@ class LandmarksDB:
     return visited_landmark_flag
 
 
-  def append(self, line):
+  def local2global_point(self, curr_pose, point):
+    r = np.linalg.norm(point)
+    local_angle = np.arctan2(point[1], point[0])
+
+    global_angle = normalize_angle(curr_pose[2] - local_angle)
+
+    point[0] += r * np.cos(global_angle)
+    point[1] += r * np.sin(global_angle)
+
+  def local2global_line(self, curr_pose, line):
+    left_pt = local2global_point(line[1])
+    right_pt = local2global_point(line[2])
+
+    coeff = np.polyfit([left_pt[0], right_pt[0]], [left_pt[1], right_pt[1]], 1)
+
+    return np.array([
+      coeff,
+      left_pt,
+      right_pt
+    ])
+
+  def append(self, curr_pose, line):
+
+    line = local2global_line(line)
 
     angles = None
     curr_angle = None
