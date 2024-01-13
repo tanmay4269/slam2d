@@ -15,7 +15,9 @@ class EKF:
     self.sigma = np.zeros((3, 3))
     self.observed_landmarks = None
 
-  def run(self):
+  def run(self,
+    curr_odom, odom_cov, dt,
+    local_lines, curr_landmark_ids):
     """
     Arguments:
     - curr_odom
@@ -44,12 +46,16 @@ class EKF:
     - [FILL IN!]
     """
 
-    # TODO: at start, self.observed_landmarks is appended by boolean forall idx in current_landmarks
     if self.observed_landmarks is None:
       self.observed_landmarks = np.zeros(
         np.max(curr_landmark_ids)
       )
-    pass
+
+    self.prediction_step(curr_odom, odom_cov, dt)
+    self.correction_step(local_lines, curr_landmark_ids)
+
+    return (self.mu, self.sigma)
+    
 
   def prediction_step(odom, odom_cov, dt):
     """
@@ -77,7 +83,6 @@ class EKF:
 
 
   def correction_step(lines, current_landmarks_ids):
-
     """
     mu: x, y, theta of bot and (rho, alpha) for all landmarks in global frame
     lines: in local frame
@@ -152,8 +157,7 @@ class EKF:
         H = np.vstack((H, Hi))
       else:
         H = Hi
-
-    # for loop ends
+    # endfor
 
     Q = config._Q_coeff * np.eye(2 * num_lines)
 

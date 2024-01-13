@@ -15,7 +15,8 @@ def plot_line(line):
   ) 
 
 def iepf(data, curr_pose, landmarks_db):
-  current_landmarks_ids = []
+  local_lines = []
+  curr_landmark_ids = []
 
   left_pt = data[1:, 0].T
   right_pt = data[1:, -1].T
@@ -28,7 +29,7 @@ def iepf(data, curr_pose, landmarks_db):
   mid_pt = data[1:, mid_idx].T
 
   if np.linalg.norm(left_pt - right_pt) < 2*config._iepf_dist_theshold:
-    return current_landmarks_ids
+    return (local_lines, curr_landmark_ids)
 
   if (np.max(distances) < config._iepf_dist_theshold) or (
     np.min([np.linalg.norm(left_pt - mid_pt),
@@ -42,13 +43,15 @@ def iepf(data, curr_pose, landmarks_db):
       right_pt
     ])
 
+    local_lines.append(line_landmark)
+
     plot_line(line_landmark)
     
-    current_landmarks_ids.append(
+    curr_landmark_ids.append(
       landmarks_db.append(curr_pose, line_landmark)
     )
 
-    return current_landmarks_ids
+    return (local_lines, curr_landmark_ids)
   
 
   # landmark 0
@@ -60,7 +63,9 @@ def iepf(data, curr_pose, landmarks_db):
     mid_pt
   ])
 
-  current_landmarks_ids.append(
+  local_lines.append(line_landmark_0)
+
+  curr_landmark_ids.append(
     landmarks_db.append(curr_pose, line_landmark_0)
   )
 
@@ -75,10 +80,12 @@ def iepf(data, curr_pose, landmarks_db):
     right_pt
   ])
 
-  current_landmarks_ids.append(
+  local_lines.append(line_landmark_1)
+
+  curr_landmark_ids.append(
     landmarks_db.append(curr_pose, line_landmark_1)
   )
   
   plot_line(line_landmark_1)
 
-  return current_landmarks_ids
+  return (local_lines, curr_landmark_ids)

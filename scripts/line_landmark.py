@@ -11,19 +11,23 @@ class LandmarksDB:
     self.linear_dist_threshold = config._linear_dist_threshold
     self.slope_threshold_rad = config._slope_threshold_rad
 
-  
-  def orthogonal_projection(self, point, line):
-    line_coeff = line[0]
+  # WARNING!
+  def orthogonal_projection(self, points, line_coeffs):
+    """
+    row0: x; row1: y
 
-    x0 = (point[0] + line_coeff[0] * point[1] - line_coeff[0] * line_coeff[1]) / (1 + line_coeff[0]**2)
-    y0 = line_coeff[0] * x0 + line_coeff[1]
+    points: (N, 2)
+    line_coeffs: (N, 2)
+    proj_pts: (N, 2)
+    """
+    x0 = (points[0] + line_coeffs[0] * points[1] - line_coeffs[0] * line_coeffs[1]) / (1 + line_coeffs[0]**2)
+    y0 = line_coeffs[0] * x0 + line_coeffs[1]
 
-    proj_pt = np.array([x0, y0])
+    proj_pts = np.vstack([x0, y0]).T
 
-    dist = np.abs(line_coeff[0] * point[0] + line_coeff[1] - point[1]) / np.sqrt(1 + line_coeff[0]**2)
+    distances = np.abs(line_coeffs[0] * points[0] + line_coeffs[1] - points[1]) / np.sqrt(1 + line_coeffs[0]**2)
 
-    return (proj_pt, dist)
-
+    return (proj_pts, distances)
   
   def point_position(self, point, line):
     """
@@ -42,16 +46,14 @@ class LandmarksDB:
       return -1
     else:
       return 1
-
   
   def new_line_to_add(self, query, line):
-
     lines_no_overlap_flag = -1
     far_line_flag = 0
     visited_landmark_flag = 1
     
-    left_pt, left_dist = self.orthogonal_projection(query[1], line)
-    right_pt, right_dist = self.orthogonal_projection(query[2], line)
+    left_pt, left_dist = self.orthogonal_projection(query[1], line[0])
+    right_pt, right_dist = self.orthogonal_projection(query[2], line[0])
 
     # bools to know if left and right points of query are within the line seg: `line`
     left_pt_position = self.point_position(left_pt, line)
@@ -87,35 +89,12 @@ class LandmarksDB:
         line[2] = query[1]
       else:
         return lines_no_overlap_flag
-
+    # endif
 
     return visited_landmark_flag
 
-
-  def local2global_point(self, curr_pose, point):
-    r = np.linalg.norm(point)
-    local_angle = np.arctan2(point[1], point[0])
-
-    global_angle = normalize_angle(curr_pose[2] - local_angle)
-
-    point[0] += r * np.cos(global_angle)
-    point[1] += r * np.sin(global_angle)
-
-  def local2global_line(self, curr_pose, line):
-    left_pt = local2global_point(line[1])
-    right_pt = local2global_point(line[2])
-
-    coeff = np.polyfit([left_pt[0], right_pt[0]], [left_pt[1], right_pt[1]], 1)
-
-    return np.array([
-      coeff,
-      left_pt,
-      right_pt
-    ])
-
   def append(self, curr_pose, line):
-
-    line = local2global_line(line)
+    line = utils.local2global_line(line)
 
     angles = None
     curr_angle = None
@@ -146,3 +125,32 @@ class LandmarksDB:
       revisited_landmark_idx = self.lines.shape[0]
       
     return revisited_landmark_idx
+
+  # WARNING! - HIGH SCOPE OF BUG
+  def update(self, updated_polar_lines, curr_landmark_ids):
+    """
+    1. convert (rho, alpha) to (m, c)
+    2. update old line
+  --> [ ] [2.1] project old line onto new 
+      [ ] [2.2] first rotate to match m then translate to match c
+    """
+    
+    old_lines = self.lines[curr_landmark_ids]
+
+    m, c = utils.polar2line(
+      updated_polar_lines[::2], updated_polar_lines[1::2])
+    
+    coeffs = np.vstack([m, c]).T
+
+    projected_left_pts, _ = self.orthogonal_projection(
+      old_lines[:, 1].T,
+      np.vstack([m, c])
+    )
+
+    projected_right_pts, _ = self.orthogonal_projection(
+      old_lines[:, 2].T,
+      np.vstack([m, c])
+    )
+
+    self.lines[curr_landmark_ids] = np.dstack([
+      coeffs, projected_left_pts, projected_right_pts])

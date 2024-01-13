@@ -82,13 +82,21 @@ class SLAM(Node):
       
       angles = normalize_angle(angles)
 
-      current_landmarks_ids = []  # ID's of landmarks detected in the current frame
+      local_lines = None
+      curr_landmark_ids = None
 
       # extract features when the bot isn't rotating 
       if np.abs(self.curr_odom[1]) < config._angular_vel_threshold:
-        current_landmarks_ids = self.feature_extraction(ranges, angles)
+        local_lines, curr_landmark_ids = self.feature_extraction(ranges, angles)
 
         # call ekf right here!
+        ekf_mu, ekf_sigma = self.ekf.run(
+          self.curr_odom, self.odom_cov, self.dt,
+          self.local_lines, self.curr_landmark_ids
+        )
+
+        self.landmarks.update(ekf_mu[3:], curr_landmark_ids)
+
 
   def feature_extraction(self, ranges, angles):
     """
@@ -131,17 +139,21 @@ class SLAM(Node):
     plt.draw()
 
     """ IEPF """
-    current_landmarks_ids = []
+    local_lines = []
+    curr_landmark_ids = []
 
     for k in unique_labels:
       if k == -1:
         continue
 
-      current_landmarks_ids += iepf(
+      lines, landmark_ids = iepf(
         lidar_pts[:, labels==k], 
         self.curr_pose, self.landmarks)
 
-    return current_landmarks_ids
+      local_lines += lines
+      curr_landmark_ids += landmark_ids
+
+    return (local_lines, curr_landmark_ids)
 
 
   def show_landmarks(self):
