@@ -121,7 +121,7 @@ class LandmarksDB:
     curr_angle = None
     closest_slopes_idx = None
 
-    angles = normalize_angle(np.arctan(self.lines[:, 0, 0]))
+    angles = normalize_angle(np.arctan(self.lines[:, 0, 0]))  # can be improved by storing angles instead of slopes for lines 
     curr_angle = normalize_angle(np.arctan(line[0, 0]))
 
     closest_slopes_idx = np.where((angles >= curr_angle - self.slope_threshold_rad/2) & (angles <= curr_angle + self.slope_threshold_rad/2))[0]

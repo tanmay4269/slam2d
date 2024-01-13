@@ -6,10 +6,14 @@ def normalize_angle(angle):
   return normalized_angle
 
 def line2polar(line):
+  """
+  Returns orthogonal projection of the origin onto 
+  the given line in polar coordinates
+  """
   m, c = line[0]
 
   alpha = normalize_angle(np.arctan2(m) + np.pi/2)
-  rho = np.abs(c) * sin(alpha)
+  rho = np.abs(c * sin(alpha))
 
   return (rho, alpha)
   

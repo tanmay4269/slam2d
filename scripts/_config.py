@@ -1,13 +1,14 @@
 import numpy as np
 
 """ SLAM """
-# artificial noise
+_use_fake_odom_noise = False
 _odom_cov = np.array([
   [0.0, 0.0, 0.0],
   [0.0, 0.0, 0.0],
   [0.0, 0.0, 0.0]
 ])
 
+_use_fake_lidar_noise = True
 _lidar_cov = np.array([
   [(1e-3)**2, 0.0],
   [0.0, (np.radians(0.1))**2]
@@ -27,6 +28,9 @@ _min_line_len = 0.8
 """ IEPF """
 _iepf_dist_theshold = 0.25
 _iepf_length_threshold = 0.1
+
+""" EKF """
+_Q_coeff = 0.001
 
 """ Landmarks """
 _perp_dist_threshold = 0.5            # perp dist between point and line
