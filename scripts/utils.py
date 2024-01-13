@@ -5,6 +5,24 @@ def normalize_angle(angle):
 
   return normalized_angle
 
+# WARNING!
+def orthogonal_projection(points, line_coeffs):
+  """
+  row0: x; row1: y
+
+  points: (2, N)
+  line_coeffs: (2, N)
+  proj_pts: (N, 2)
+  """
+  x0 = (points[0] + line_coeffs[0] * points[1] - line_coeffs[0] * line_coeffs[1]) / (1 + line_coeffs[0]**2)
+  y0 = line_coeffs[0] * x0 + line_coeffs[1]
+
+  proj_pts = np.vstack([x0, y0]).T
+
+  distances = np.abs(line_coeffs[0] * points[0] + line_coeffs[1] - points[1]) / np.sqrt(1 + line_coeffs[0]**2)
+
+  return (proj_pts, distances)
+
 def local2global_point(curr_pose, point):
   r = np.linalg.norm(point)
   local_angle = np.arctan2(point[1], point[0])

@@ -29,7 +29,7 @@ class SLAM(Node):
     self.lidar_listener = self.create_subscription(LaserScan, 'scan', self.lidar_callback, 100)
 
     """ Curr bot state """
-    self.curr_odom = []               # linear, angular velocities 
+    self.curr_odom = [0.0, 0.0]       # linear, angular velocities 
     self.curr_pose = [0.0, 0.0, 0.0]  # x, y, yaw
 
     """ EKF """
@@ -89,12 +89,12 @@ class SLAM(Node):
       if np.abs(self.curr_odom[1]) < config._angular_vel_threshold:
         local_lines, curr_landmark_ids = self.feature_extraction(ranges, angles)
 
-        # call ekf right here!
         ekf_mu, ekf_sigma = self.ekf.run(
-          self.curr_odom, self.odom_cov, self.dt,
-          self.local_lines, self.curr_landmark_ids
+          self.curr_odom, self.odom_cov, self.delta_time,
+          local_lines, curr_landmark_ids
         )
 
+        self.curr_pose = ekf_mu[:3]
         self.landmarks.update(ekf_mu[3:], curr_landmark_ids)
 
 

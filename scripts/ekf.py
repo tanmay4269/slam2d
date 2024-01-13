@@ -94,6 +94,9 @@ class EKF:
       - observed_landmarks 
       - mu, sigma
     """
+    if curr_landmark_ids is None:
+      return
+      
     i_max = np.max(current_landmarks_ids)
     pad = max(0, i_max - self.observed_landmarks.shape[0])
     self.observed_landmarks = np.array([self.observed_landmarks, np.zeros(pad)])

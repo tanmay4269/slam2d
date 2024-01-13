@@ -15,8 +15,8 @@ def plot_line(line):
   ) 
 
 def iepf(data, curr_pose, landmarks_db):
-  local_lines = []
-  curr_landmark_ids = []
+  local_lines = None
+  curr_landmark_ids = None
 
   left_pt = data[1:, 0].T
   right_pt = data[1:, -1].T

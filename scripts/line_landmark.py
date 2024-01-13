@@ -10,24 +10,6 @@ class LandmarksDB:
     self.perp_dist_threshold = config._perp_dist_threshold
     self.linear_dist_threshold = config._linear_dist_threshold
     self.slope_threshold_rad = config._slope_threshold_rad
-
-  # WARNING!
-  def orthogonal_projection(self, points, line_coeffs):
-    """
-    row0: x; row1: y
-
-    points: (N, 2)
-    line_coeffs: (N, 2)
-    proj_pts: (N, 2)
-    """
-    x0 = (points[0] + line_coeffs[0] * points[1] - line_coeffs[0] * line_coeffs[1]) / (1 + line_coeffs[0]**2)
-    y0 = line_coeffs[0] * x0 + line_coeffs[1]
-
-    proj_pts = np.vstack([x0, y0]).T
-
-    distances = np.abs(line_coeffs[0] * points[0] + line_coeffs[1] - points[1]) / np.sqrt(1 + line_coeffs[0]**2)
-
-    return (proj_pts, distances)
   
   def point_position(self, point, line):
     """
@@ -52,8 +34,8 @@ class LandmarksDB:
     far_line_flag = 0
     visited_landmark_flag = 1
     
-    left_pt, left_dist = self.orthogonal_projection(query[1], line[0])
-    right_pt, right_dist = self.orthogonal_projection(query[2], line[0])
+    left_pt, left_dist = utils.orthogonal_projection(query[1], line[0])
+    right_pt, right_dist = utils.orthogonal_projection(query[2], line[0])
 
     # bools to know if left and right points of query are within the line seg: `line`
     left_pt_position = self.point_position(left_pt, line)
@@ -142,12 +124,13 @@ class LandmarksDB:
     
     coeffs = np.vstack([m, c]).T
 
-    projected_left_pts, _ = self.orthogonal_projection(
+    # TODO: check if "points" arg is in correct shape
+    projected_left_pts, _ = utils.orthogonal_projection(
       old_lines[:, 1].T,
       np.vstack([m, c])
     )
 
-    projected_right_pts, _ = self.orthogonal_projection(
+    projected_right_pts, _ = utils.orthogonal_projection(
       old_lines[:, 2].T,
       np.vstack([m, c])
     )
