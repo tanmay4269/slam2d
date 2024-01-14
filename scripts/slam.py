@@ -13,6 +13,7 @@ from tf_transformations import euler_from_quaternion
 
 from utils import *
 import _config as config 
+from line_landmark import LandmarksDB
 import iepf
 from ekf import EKF
 
@@ -37,11 +38,11 @@ class SLAM(Node):
 
     """ Landmarks """
     self.landmarks = LandmarksDB()
+    self.true_pose = [0.0, 0.0, 0.0]  # x, y, yaw
 
     """ Noise """
     self.odom_cov  = None if not config._use_fake_odom_noise else config._odom_cov
     self.lidar_cov = np.zeros((2,2)) if not config._use_fake_lidar_noise else config._lidar_cov
-
 
   def odom_callback(self, msg):
     if msg is not None:
@@ -51,11 +52,10 @@ class SLAM(Node):
 
       if not config._use_fake_odom_noise:
         c = np.array(msg.twist.covariance).reshape(6,6)
-        self.odom_cov = np.array([
-          [c[0, :2], 0.0],
-          [c[1, :2], 0.0],
-          [0.0, 0.0, c[5,5]]
-        ])
+        
+        self.odom_cov = np.zeros((3, 3), dtype=float)
+        self.odom_cov[:2, :2] = c[:2, :2]
+        self.odom_cov[2, 2] = c[5, 5]
 
       vx = msg.twist.twist.linear.x
       vy = msg.twist.twist.linear.y
@@ -68,6 +68,18 @@ class SLAM(Node):
       angular = w
 
       self.curr_odom = [linear, angular]
+
+      # true pose
+      orientation = [
+        msg.pose.pose.orientation.x,
+        msg.pose.pose.orientation.y,
+        msg.pose.pose.orientation.z,
+        msg.pose.pose.orientation.w
+      ]
+
+      self.true_pose[0] = msg.pose.pose.position.x
+      self.true_pose[1] = msg.pose.pose.position.y
+      self.true_pose[2] = euler_from_quaternion(orientation)[-1]
 
 
   def lidar_callback(self, msg):
@@ -84,18 +96,26 @@ class SLAM(Node):
 
       local_lines = None
       curr_landmark_ids = None
-
+      
       # extract features when the bot isn't rotating 
       if np.abs(self.curr_odom[1]) < config._angular_vel_threshold:
-        local_lines, curr_landmark_ids = self.feature_extraction(ranges, angles)
+        extracted_features = self.feature_extraction(ranges, angles)
 
-        ekf_mu, ekf_sigma = self.ekf.run(
-          self.curr_odom, self.odom_cov, self.delta_time,
-          local_lines, curr_landmark_ids
-        )
+        if extracted_features is not None:
+            local_lines, curr_landmark_ids = extracted_features
 
-        self.curr_pose = ekf_mu[:3]
-        self.landmarks.update(ekf_mu[3:], curr_landmark_ids)
+      ekf_mu, ekf_sigma = self.ekf.run(
+        self.curr_odom, self.odom_cov, self.delta_time * 1e-9,
+        local_lines, curr_landmark_ids
+      )
+
+      self.curr_pose = ekf_mu[:3]
+      self.landmarks.update(ekf_mu[3:], curr_landmark_ids)
+
+      # print(self.curr_pose)
+      # print(ekf_sigma[:3, :3])
+
+      self.show_landmarks()
 
 
   def feature_extraction(self, ranges, angles):
@@ -108,10 +128,14 @@ class SLAM(Node):
       self.curr_pose[0] + ranges * np.cos(angles),
       self.curr_pose[1] + ranges * np.sin(angles)
     ])
-    
+
+    # print(self.curr_pose)
+
     # data cleaning
-    lidar_pts = lidar_pts[:, ~np.any(np.isnan(lidar_pts) | np.isinf(lidar_pts), axis=0)]
-    
+    lidar_pts = lidar_pts[
+      ~np.any(np.isnan(lidar_pts) | \
+      np.isinf(lidar_pts), axis=1)]
+
     """ DBSCAN """
     dbscan_data = lidar_pts[1:, :].T
 
@@ -139,8 +163,8 @@ class SLAM(Node):
     plt.draw()
 
     """ IEPF """
-    local_lines = []
-    curr_landmark_ids = []
+    local_lines = None
+    curr_landmark_ids = None
 
     for k in unique_labels:
       if k == -1:
@@ -163,6 +187,10 @@ class SLAM(Node):
     plt.plot(
       self.curr_pose[0], self.curr_pose[1], 
       marker='o', markersize=8, color='Red', label='Bot')
+
+    plt.plot(
+      self.true_pose[0], self.true_pose[1], 
+      marker='*', markersize=8, color='Black', label='True Bot')
 
     plt.plot(
       [self.landmarks.lines[:, 1, 0], self.landmarks.lines[:, 2, 0]], 

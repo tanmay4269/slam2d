@@ -1,6 +1,6 @@
 import numpy as np
 
-from utils import *
+import utils 
 import _config as config
 
 class LandmarksDB:
@@ -100,7 +100,6 @@ class LandmarksDB:
         revisited_landmark_idx = idx
         break
 
-    # zero count means none of the existing landmarks can be associated to the current query landmark
     if revisited_landmark_idx == -1 and closest_slopes_idx.shape[0] > 0:
       self.lines = np.insert(self.lines, -1, line, axis=0)
 
@@ -113,11 +112,14 @@ class LandmarksDB:
     """
     1. convert (rho, alpha) to (m, c)
     2. update old line
-  --> [ ] [2.1] project old line onto new 
+  --> [x] [2.1] project old line onto new 
       [ ] [2.2] first rotate to match m then translate to match c
     """
-    
-    old_lines = self.lines[curr_landmark_ids]
+
+    if curr_landmark_ids is None:
+      return
+
+    old_lines = self.lines[curr_landmark_ids][0]
 
     m, c = utils.polar2line(
       updated_polar_lines[::2], updated_polar_lines[1::2])

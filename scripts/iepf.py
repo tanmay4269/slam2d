@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from utils import *
 import _config as config
 from line_landmark import *
 

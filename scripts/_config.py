@@ -30,7 +30,7 @@ _iepf_dist_theshold = 0.25
 _iepf_length_threshold = 0.1
 
 """ EKF """
-_Q_coeff = 0.001
+_Q_coeff = 1e-6
 
 """ Landmarks """
 _perp_dist_threshold = 0.5            # perp dist between point and line

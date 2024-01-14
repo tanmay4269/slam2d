@@ -4,7 +4,11 @@ and shares concepts from slam course: http://ais.informatik.uni-freiburg.de/teac
 """
 
 import numpy as np
+from numpy import sin, cos
+
 import utils
+from utils import normalize_angle
+
 import _config as config
 
 
@@ -18,33 +22,6 @@ class EKF:
   def run(self,
     curr_odom, odom_cov, dt,
     local_lines, curr_landmark_ids):
-    """
-    Arguments:
-    - curr_odom
-    - odom_cov
-    - dt
-
-    - lines
-    - curr_landmark_ids
-
-    1. prediction step:
-      - mu: self
-      - sigma: self
-      - odom: args
-      - odom_cov: args
-      - dt: args
-
-    2. correction step:
-      - mu: self
-      - sigma: self
-      - lines: slam.landmarks (in bot's local frame)
-      - current_landmark_ids: slam.feature_extractor
-      - observed_landmarks: self
-      - [FILL IN!]
-
-    Return:
-    - [FILL IN!]
-    """
 
     if self.observed_landmarks is None:
       self.observed_landmarks = np.zeros(
@@ -56,8 +33,7 @@ class EKF:
 
     return (self.mu, self.sigma)
     
-
-  def prediction_step(odom, odom_cov, dt):
+  def prediction_step(self, odom, odom_cov, dt):
     """
     This step exclusively predicts bot's pose, it's mean and covariance
     - mu: pose at t-1
@@ -68,8 +44,8 @@ class EKF:
     v = odom[0]
     w = odom[1]
     
-    self.mu[0] += -v/w * np.sin(theta) + v/w * np.sin(theta + w * dt)
-    self.mu[1] +=  v/w * np.cos(theta) - v/w * np.cos(theta + w * dt)
+    self.mu[0] += -v/w * sin(theta) + v/w * sin(theta + w * dt)
+    self.mu[1] +=  v/w * cos(theta) - v/w * cos(theta + w * dt)
     self.mu[2] += w * dt
 
     self.mu[2] = normalize_angle(self.mu[2])
@@ -81,8 +57,7 @@ class EKF:
     self.sigma = G * self.sigma * G.T
     self.sigma[0:3, 0:3] += odom_cov
 
-
-  def correction_step(lines, current_landmarks_ids):
+  def correction_step(self, lines, curr_landmark_ids):
     """
     mu: x, y, theta of bot and (rho, alpha) for all landmarks in global frame
     lines: in local frame
@@ -97,7 +72,7 @@ class EKF:
     if curr_landmark_ids is None:
       return
       
-    i_max = np.max(current_landmarks_ids)
+    i_max = np.max(curr_landmark_ids)
     pad = max(0, i_max - self.observed_landmarks.shape[0])
     self.observed_landmarks = np.array([self.observed_landmarks, np.zeros(pad)])
     
@@ -122,14 +97,14 @@ class EKF:
     # will be of shape: (2m, 3 + 2N), N being total number of landmarks
     H = None
 
-    for idx in current_landmarks_ids:
+    for idx in curr_landmark_ids:
       # for new landmarks
       if self.observed_landmarks[idx] == 0:
         rho, alpha = utils.line2polar(lines[idx])
 
         self.mu[2 * idx + 3] = rho + \
-          self.mu[0] * np.cos(alpha) + \
-          self.mu[1] * np.sin(alpha)
+          self.mu[0] * cos(alpha) + \
+          self.mu[1] * sin(alpha)
 
         self.mu[2 * idx + 4] = normalize_angle(self.mu[2] + alpha)
 
@@ -141,7 +116,7 @@ class EKF:
       Z[2 * idx + 1] = alpha
 
       expected_Z[2 * idx] = self.mu[2 * idx] - \
-        (self.mu[0] * np.cos(alpha) + self.mu[1] * np.sin(alpha))
+        (self.mu[0] * cos(alpha) + self.mu[1] * sin(alpha))
 
       expected_Z[2 * idx + 1] = normalize_angle(self.mu[2 * idx + 1] - self.mu[2])
 

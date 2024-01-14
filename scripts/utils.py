@@ -14,6 +14,10 @@ def orthogonal_projection(points, line_coeffs):
   line_coeffs: (2, N)
   proj_pts: (N, 2)
   """
+
+  # print(points.shape)
+  # print(line_coeffs.shape)
+
   x0 = (points[0] + line_coeffs[0] * points[1] - line_coeffs[0] * line_coeffs[1]) / (1 + line_coeffs[0]**2)
   y0 = line_coeffs[0] * x0 + line_coeffs[1]
 
