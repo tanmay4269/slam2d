@@ -1,6 +1,7 @@
 import numpy as np
 
 import utils 
+from utils import normalize_angle
 import _config as config
 
 class LandmarksDB:
@@ -22,7 +23,7 @@ class LandmarksDB:
     vec_l = point - (line[1] - np.array([self.linear_dist_threshold * np.cos(angle), self.linear_dist_threshold * np.sin(angle)]))
     vec_r = point - (line[2] + np.array([self.linear_dist_threshold * np.cos(angle), self.linear_dist_threshold * np.sin(angle)]))
 
-    if np.dot(vec_l, vec_r) < 0:
+    if np.dot(vec_l, vec_r.T) < 0:
       return 0
     elif np.linalg.norm(vec_l) < np.linalg.norm(vec_r):
       return -1
@@ -76,7 +77,7 @@ class LandmarksDB:
     return visited_landmark_flag
 
   def append(self, curr_pose, line):
-    line = utils.local2global_line(line)
+    line = utils.local2global_line(curr_pose, line)
 
     angles = None
     curr_angle = None
@@ -107,7 +108,6 @@ class LandmarksDB:
       
     return revisited_landmark_idx
 
-  # WARNING! - HIGH SCOPE OF BUG
   def update(self, updated_polar_lines, curr_landmark_ids):
     """
     1. convert (rho, alpha) to (m, c)
@@ -119,6 +119,7 @@ class LandmarksDB:
     if curr_landmark_ids is None:
       return
 
+    # TODO: Fix many wrong things here
     old_lines = self.lines[curr_landmark_ids][0]
 
     m, c = utils.polar2line(

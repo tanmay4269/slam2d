@@ -3,9 +3,9 @@ import numpy as np
 """ SLAM """
 _use_fake_odom_noise = False
 _odom_cov = np.array([
-  [0.0, 0.0, 0.0],
-  [0.0, 0.0, 0.0],
-  [0.0, 0.0, 0.0]
+  [0.01, 0.0, 0.0],
+  [0.0, 0.01, 0.0],
+  [0.0, 0.0, 0.01]
 ])
 
 _use_fake_lidar_noise = True
@@ -15,15 +15,8 @@ _lidar_cov = np.array([
 ])
 
 """ DBSCAN """
-_dbscan_epsilon = 0.2    # dist bw pts
+_dbscan_epsilon = 0.2  # dist bw pts
 _dbscan_min_samples = 3
-
-""" RANSAC """
-_deg_per_scan = 10         # angle around initial sample to form sub sample
-_min_line_pts = 5          # stop algo if the sample has less than X number of nearest neighbours
-_ransac_tolerence = 0.05   # if point is within x distance of line its part of line
-_ransac_consensus = 10     # reject the line if less than X consensus are a part of it
-_min_line_len = 0.8
 
 """ IEPF """
 _iepf_dist_theshold = 0.25

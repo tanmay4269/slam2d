@@ -11,7 +11,6 @@ from utils import normalize_angle
 
 import _config as config
 
-
 class EKF:
   def __init__(self):
     # global (x_bot, y_bot, yaw_bot, (rho, alpha) for all observed landmarks) 
@@ -23,11 +22,6 @@ class EKF:
     curr_odom, odom_cov, dt,
     local_lines, curr_landmark_ids):
 
-    if self.observed_landmarks is None:
-      self.observed_landmarks = np.zeros(
-        np.max(curr_landmark_ids)
-      )
-
     self.prediction_step(curr_odom, odom_cov, dt)
     self.correction_step(local_lines, curr_landmark_ids)
 
@@ -36,26 +30,26 @@ class EKF:
   def prediction_step(self, odom, odom_cov, dt):
     """
     This step exclusively predicts bot's pose, it's mean and covariance
-    - mu: pose at t-1
+    - self.mu: pose at t-1
     - odom: odom at t
     """
 
-    theta = self.mu[2]
     v = odom[0]
     w = odom[1]
+    prev_theta = self.mu[2]
     
-    self.mu[0] += -v/w * sin(theta) + v/w * sin(theta + w * dt)
-    self.mu[1] +=  v/w * cos(theta) - v/w * cos(theta + w * dt)
+    self.mu[0] += -v/w * sin(prev_theta) + v/w * sin(prev_theta + w * dt)
+    self.mu[1] +=  v/w * cos(prev_theta) - v/w * cos(prev_theta + w * dt)
     self.mu[2] += w * dt
 
     self.mu[2] = normalize_angle(self.mu[2])
 
     G = np.eye(self.mu.shape[0])
-    G[0, 2] = -v/w * cos(theta) + v/w * cos(theta + w * dt)
-    G[1, 2] = -v/w * sin(theta) + v/w * sin(theta + w * dt)
+    G[0, 2] = -v/w * cos(prev_theta) + v/w * cos(prev_theta + w * dt)
+    G[1, 2] = -v/w * sin(prev_theta) + v/w * sin(prev_theta + w * dt)
 
     self.sigma = G * self.sigma * G.T
-    self.sigma[0:3, 0:3] += odom_cov
+    self.sigma[:3, :3] += odom_cov
 
   def correction_step(self, lines, curr_landmark_ids):
     """
@@ -63,7 +57,6 @@ class EKF:
     lines: in local frame
     """
 
-    # WARNING! - padding may messup
     """ 
     zero padding:
       - observed_landmarks 
@@ -71,17 +64,22 @@ class EKF:
     """
     if curr_landmark_ids is None:
       return
-      
-    i_max = np.max(curr_landmark_ids)
-    pad = max(0, i_max - self.observed_landmarks.shape[0])
-    self.observed_landmarks = np.array([self.observed_landmarks, np.zeros(pad)])
+
+    i_max = np.max(curr_landmark_ids) + 1
+    pad = 0
+    
+    if self.observed_landmarks is None:
+      pad = i_max 
+      self.observed_landmarks = []
+    else:
+      pad = max(0, i_max - self.observed_landmarks.shape[0])
+
+    self.observed_landmarks = utils.zero_pad(self.observed_landmarks, (0, pad))
     
     N_old = self.mu.shape[0]
-    self.mu = np.array([self.mu, np.zeros(pad)])
-    self.sigma = np.pad(self.sigma, ((0, pad), (0, pad)), 
-      mode="constant", constant_value=0)
+    self.mu = utils.zero_pad(self.mu, ((0, 2 * pad), (0, 0)))
+    self.sigma = utils.zero_pad(self.sigma, ((0, 2 * pad), (0, 2 * pad)))
 
-    # WARNING!
     N_new = self.mu.shape[0]
     for i in range(N_old, N_new):
       self.sigma[i,i] = np.inf 
@@ -90,8 +88,8 @@ class EKF:
     # Z is (rho, alpha) in "LOCAL FRAME"
     # expected_Z is predicted Z from info from t-1 and pediction_step
     num_lines = lines.shape[0]
-    Z = np.zeros(2 * num_lines)
-    expected_Z = np.zeros(2 * num_lines)
+    Z = np.zeros((2 * num_lines, 1))
+    expected_Z = np.zeros((2 * num_lines, 1))
 
     # stacked Jacobian blocks 
     # will be of shape: (2m, 3 + 2N), N being total number of landmarks
@@ -123,7 +121,7 @@ class EKF:
       Hi = np.array([
         [-cos(alpha), -sin(alpha), 0, 1, (self.mu[0] * sin(alpha) - self.mu[1] * cos(alpha))],
         [0, 0, -1, 0, 1]
-      ])
+      ], dtype=float)
 
       Fx = np.zeros((5, N_new))
       Fx[:3, :3] = np.eye(3)
@@ -131,10 +129,7 @@ class EKF:
       Fx[4, 2 * idx + 4] = 1
       Hi = Hi @ Fx
 
-      if H is not None:
-        H = np.vstack((H, Hi))
-      else:
-        H = Hi
+      H = np.vstack((H, Hi)) if H is not None else Hi
     # endfor
 
     Q = config._Q_coeff * np.eye(2 * num_lines)

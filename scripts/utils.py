@@ -1,11 +1,13 @@
 import numpy as np
 
+def zero_pad(array, padding):
+  return np.pad(array, padding, mode="constant", constant_values=(0,0))
+
 def normalize_angle(angle):
   normalized_angle = (angle + np.pi) % (2 * np.pi) - np.pi
 
   return normalized_angle
 
-# WARNING!
 def orthogonal_projection(points, line_coeffs):
   """
   row0: x; row1: y
@@ -27,18 +29,22 @@ def orthogonal_projection(points, line_coeffs):
 
   return (proj_pts, distances)
 
-def local2global_point(curr_pose, point):
-  r = np.linalg.norm(point)
-  local_angle = np.arctan2(point[1], point[0])
+def local2global_point(curr_pose, local_point):
+  r = np.linalg.norm(local_point)
+  local_angle = np.arctan2(local_point[1], local_point[0])
 
   global_angle = normalize_angle(curr_pose[2] - local_angle)
 
-  point[0] += r * np.cos(global_angle)
-  point[1] += r * np.sin(global_angle)
+  global_pt = local_point.copy()
+
+  global_pt[0] += r * np.cos(global_angle)
+  global_pt[1] += r * np.sin(global_angle)
+
+  return global_pt
 
 def local2global_line(curr_pose, line):
-  left_pt = local2global_point(line[1])
-  right_pt = local2global_point(line[2])
+  left_pt = local2global_point(curr_pose, line[1])
+  right_pt = local2global_point(curr_pose, line[2])
 
   coeff = np.polyfit([left_pt[0], right_pt[0]], [left_pt[1], right_pt[1]], 1)
 
@@ -55,7 +61,7 @@ def line2polar(line):
   """
   m, c = line[0]
 
-  alpha = normalize_angle(np.arctan2(m) + np.pi/2)
+  alpha = normalize_angle(np.arctan(m) + np.pi/2)
   rho = np.abs(c * np.sin(alpha))
 
   return (rho, alpha)

@@ -14,18 +14,18 @@ def plot_line(line):
   ) 
 
 def iepf(data, curr_pose, landmarks_db):
-  local_lines = None
-  curr_landmark_ids = None
+  local_lines = []
+  curr_landmark_ids = []
 
-  left_pt = data[1:, 0].T
-  right_pt = data[1:, -1].T
+  left_pt = data[0].T
+  right_pt = data[-1].T
 
   coeff = np.polyfit([left_pt[0], right_pt[0]], [left_pt[1], right_pt[1]], 1)
 
   distances = np.abs(coeff[0] * data[1] - data[2] + coeff[1]) / np.sqrt(coeff[0]**2 + 1)
   
   mid_idx = np.argmax(distances)
-  mid_pt = data[1:, mid_idx].T
+  mid_pt = data[mid_idx].T
 
   if np.linalg.norm(left_pt - right_pt) < 2*config._iepf_dist_theshold:
     return (local_lines, curr_landmark_ids)
@@ -43,7 +43,6 @@ def iepf(data, curr_pose, landmarks_db):
     ])
 
     local_lines.append(line_landmark)
-
     plot_line(line_landmark)
     
     curr_landmark_ids.append(
