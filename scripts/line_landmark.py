@@ -88,25 +88,27 @@ class LandmarksDB:
 
     closest_slopes_idx = np.where((angles >= curr_angle - self.slope_threshold_rad/2) & (angles <= curr_angle + self.slope_threshold_rad/2))[0]
 
-    if closest_slopes_idx.shape[0] == 0:
-      self.lines = np.insert(self.lines, -1, line, axis=0)
+    landmark_idx = -1
 
-    revisited_landmark_idx = -1
+    if closest_slopes_idx.shape[0] == 0:
+      landmark_idx = self.lines.shape[0]
+      self.lines = np.insert(self.lines, landmark_idx, line, axis=0)
+
+      return landmark_idx
 
     for idx in closest_slopes_idx:
       flag = self.new_line_to_add(line, self.lines[idx])
 
       if flag == 1:
         # this means the landmark was previously visited [for data association]
-        revisited_landmark_idx = idx
+        landmark_idx = idx
         break
 
-    if revisited_landmark_idx == -1 and closest_slopes_idx.shape[0] > 0:
-      self.lines = np.insert(self.lines, -1, line, axis=0)
-
-      revisited_landmark_idx = self.lines.shape[0]
+    if landmark_idx == -1 and closest_slopes_idx.shape[0] > 0:
+      landmark_idx = self.lines.shape[0]
+      self.lines = np.insert(self.lines, landmark_idx, line, axis=0)
       
-    return revisited_landmark_idx
+    return landmark_idx
 
   def update(self, updated_polar_lines, curr_landmark_ids):
     """
@@ -119,24 +121,31 @@ class LandmarksDB:
     if curr_landmark_ids is None:
       return
 
-    # TODO: Fix many wrong things here
-    old_lines = self.lines[curr_landmark_ids][0]
+    # available_indices = curr_landmark_ids < self.lines.shape[0]
+    # updated_polar_lines = updated_polar_lines.reshape(-1,2)[available_indices].reshape(-1)
+    # curr_landmark_ids = curr_landmark_ids[available_indices]
+
+    old_lines = self.lines[curr_landmark_ids]
 
     m, c = utils.polar2line(
       updated_polar_lines[::2], updated_polar_lines[1::2])
-    
-    coeffs = np.vstack([m, c]).T
+
+    coeffs = np.column_stack([m, c]).T
 
     # TODO: check if "points" arg is in correct shape
     projected_left_pts, _ = utils.orthogonal_projection(
       old_lines[:, 1].T,
-      np.vstack([m, c])
+      coeffs.T
     )
 
     projected_right_pts, _ = utils.orthogonal_projection(
       old_lines[:, 2].T,
-      np.vstack([m, c])
+      coeffs.T
     )
 
-    self.lines[curr_landmark_ids] = np.dstack([
-      coeffs, projected_left_pts, projected_right_pts])
+    print(coeffs.shape)
+    print(projected_left_pts.shape)
+    print(projected_right_pts.shape)
+
+    self.lines[curr_landmark_ids] = np.stack([
+      coeffs, projected_left_pts, projected_right_pts], axis=1)

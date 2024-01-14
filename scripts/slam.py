@@ -55,65 +55,70 @@ class SLAM(Node):
 
 
   def odom_callback(self, msg):
-    if msg is not None:
-      # I HAVE NO FUCKIN IDEA WHY TO USE 1E-8, WHILE ITS CLEARLY IN NANOSECONDS
-      self.delta_time = (self.get_clock().now().nanoseconds - self.time) * 1e-8
-      self.time = self.get_clock().now().nanoseconds
+    if msg is None:
+      return
 
-      vx = msg.twist.twist.linear.x
-      vy = msg.twist.twist.linear.y
-      w = msg.twist.twist.angular.z
+    # I HAVE NO FUCKIN IDEA WHY TO USE 1E-8, WHILE ITS CLEARLY IN NANOSECONDS
+    self.delta_time = (self.get_clock().now().nanoseconds - self.time) * 1e-8
+    self.time = self.get_clock().now().nanoseconds
 
-      full_cov_mat = np.array(msg.twist.covariance).reshape(6,6)
-      
-      default_odom_cov = np.zeros((3, 3), dtype=float)
-      default_odom_cov[:2, :2] = full_cov_mat[:2, :2]
-      default_odom_cov[2, 2] = full_cov_mat[5, 5]
+    vx = msg.twist.twist.linear.x
+    vy = msg.twist.twist.linear.y
+    w = msg.twist.twist.angular.z
 
-      self.curr_odom["cov"] = default_odom_cov
+    full_cov_mat = np.array(msg.twist.covariance).reshape(6,6)
+    
+    default_odom_cov = np.zeros((3, 3), dtype=float)
+    default_odom_cov[:2, :2] = full_cov_mat[:2, :2]
+    default_odom_cov[2, 2]   = full_cov_mat[5, 5]
 
-      if config._use_fake_odom_noise:
-        self.curr_odom["cov"] += config._odom_cov
-        vx, vy = np.random.multivariate_normal([vx, vy], self.curr_odom["cov"][:2, :2])
-        w = np.random.normal(w, self.curr_odom["cov"][2, 2])
+    self.curr_odom["cov"] = default_odom_cov
 
-      linear = np.sqrt(vx ** 2 + vy ** 2)
-      angular = w
+    if config._use_fake_odom_noise:
+      self.curr_odom["cov"] += config._odom_cov
+      vx, vy = np.random.multivariate_normal([vx, vy], self.curr_odom["cov"][:2, :2])
+      w = np.random.normal(w, self.curr_odom["cov"][2, 2])
 
-      self.curr_odom["mean"] = [linear, angular]
+    linear = np.sqrt(vx ** 2 + vy ** 2)
+    angular = w
 
-      # true pose
-      orientation = [
-        msg.pose.pose.orientation.x,
-        msg.pose.pose.orientation.y,
-        msg.pose.pose.orientation.z,
-        msg.pose.pose.orientation.w
-      ]
+    self.curr_odom["mean"] = [linear, angular]
 
-      self.true_pose[0] = msg.pose.pose.position.x
-      self.true_pose[1] = msg.pose.pose.position.y
-      self.true_pose[2] = euler_from_quaternion(orientation)[-1]
+    # true pose
+    orientation = [
+      msg.pose.pose.orientation.x,
+      msg.pose.pose.orientation.y,
+      msg.pose.pose.orientation.z,
+      msg.pose.pose.orientation.w
+    ]
+
+    self.true_pose[0] = msg.pose.pose.position.x
+    self.true_pose[1] = msg.pose.pose.position.y
+    self.true_pose[2] = euler_from_quaternion(orientation)[-1]
 
 
   def lidar_callback(self, msg):
-    if msg is not None:
-      readings = []
-      
-      ranges = np.array(msg.ranges)
-      ranges = np.random.normal(ranges, np.sqrt(self.lidar_cov[0,0]))
+    if msg is None:
+      return
 
-      angles = msg.angle_min + np.arange(ranges.shape[0]) * msg.angle_increment
-      angles = np.random.normal(angles, np.sqrt(self.lidar_cov[1,1]))
-      
-      angles = normalize_angle(angles)
+    readings = []
+    
+    ranges = np.array(msg.ranges)
+    ranges = np.random.normal(ranges, np.sqrt(self.lidar_cov[0,0]))
 
-      self.mapper(ranges, angles)
+    angles = msg.angle_min + np.arange(ranges.shape[0]) * msg.angle_increment
+    angles = np.random.normal(angles, np.sqrt(self.lidar_cov[1,1]))
+    
+    angles = normalize_angle(angles)
+
+    self.run_ekf(ranges, angles)
   
 
-  def mapper(self, ranges, angles):
+  def run_ekf(self, ranges, angles):
     """
     Runs EKF 
     """
+
     local_lines = None
     curr_landmark_ids = None
     

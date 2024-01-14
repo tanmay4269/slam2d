@@ -11,6 +11,8 @@ from utils import normalize_angle
 
 import _config as config
 
+INF = 1e6
+
 class EKF:
   def __init__(self):
     # global (x_bot, y_bot, yaw_bot, (rho, alpha) for all observed landmarks) 
@@ -82,7 +84,7 @@ class EKF:
 
     N_new = self.mu.shape[0]
     for i in range(N_old, N_new):
-      self.sigma[i,i] = np.inf 
+      self.sigma[i, i] = INF
 
     # Z === readings at time = t
     # Z is (rho, alpha) in "LOCAL FRAME"
@@ -95,10 +97,11 @@ class EKF:
     # will be of shape: (2m, 3 + 2N), N being total number of landmarks
     H = None
 
-    for idx in curr_landmark_ids:
+    # WARNING! - line_idx may not work, not sure how, think more
+    for line_idx, idx in enumerate(curr_landmark_ids):
       # for new landmarks
       if self.observed_landmarks[idx] == 0:
-        rho, alpha = utils.line2polar(lines[idx])
+        rho, alpha = utils.line2polar(lines[line_idx])
 
         self.mu[2 * idx + 3] = rho + \
           self.mu[0] * cos(alpha) + \
@@ -108,15 +111,15 @@ class EKF:
 
         self.observed_landmarks[idx] = 1
       
-      rho, alpha = utils.line2polar(lines[idx])  # in local frame
+      rho, alpha = utils.line2polar(lines[line_idx])  # in local frame
 
-      Z[2 * idx] = rho
-      Z[2 * idx + 1] = alpha
+      Z[2 * line_idx] = rho
+      Z[2 * line_idx + 1] = alpha
 
-      expected_Z[2 * idx] = self.mu[2 * idx] - \
+      expected_Z[2 * line_idx] = self.mu[2 * idx] - \
         (self.mu[0] * cos(alpha) + self.mu[1] * sin(alpha))
 
-      expected_Z[2 * idx + 1] = normalize_angle(self.mu[2 * idx + 1] - self.mu[2])
+      expected_Z[2 * line_idx + 1] = normalize_angle(self.mu[2 * idx + 1] - self.mu[2])
 
       Hi = np.array([
         [-cos(alpha), -sin(alpha), 0, 1, (self.mu[0] * sin(alpha) - self.mu[1] * cos(alpha))],

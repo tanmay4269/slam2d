@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import _config as config
-from line_landmark import *
 
 def plot_line(line):
   plt.plot(
@@ -27,7 +26,7 @@ def iepf(data, curr_pose, landmarks_db):
   mid_idx = np.argmax(distances)
   mid_pt = data[mid_idx].T
 
-  if np.linalg.norm(left_pt - right_pt) < 2*config._iepf_dist_theshold:
+  if np.linalg.norm(left_pt - right_pt) < 2 * config._iepf_dist_theshold:
     return (local_lines, curr_landmark_ids)
 
   if (np.max(distances) < config._iepf_dist_theshold) or (
